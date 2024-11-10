@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "rollup": "^4.24.4"
+  },
+  "packageManager": "pnpm@8.10.3+sha512.d7de760eaaf8d4d03f9739a462be0be379874260e11bc423b9516ef06e9754282e8848042f3317d93440a35bd7e4d58eeb0d1e4a98727347e8c3fa3a0c381314"
+}

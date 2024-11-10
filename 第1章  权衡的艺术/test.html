@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="render.js"></script>
+</head>
+
+<body>
+
+</body>
+
+<script>
+  const obj = {
+    tag: 'div',
+    children: [
+      {
+        tag: 'h1',
+        children: ['Hello World']
+      },
+      {
+        tag: 'p',
+        children: ['Hello World']
+      }
+    ]
+  }
+  Render(obj, document.body)
+</script>
+
+</html>
