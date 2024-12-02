@@ -48,6 +48,12 @@ function createRenderer(options) {
     // 创建dom
     // 在vnode上与真实dom进行关联
     const el = vnode.el = createElement(vnode.type)
+    if (vnode.props) {
+      for (const key in vnode.props) {
+        // 打属性补丁
+        patchProp(el, key, null, vnode.props[key])
+      }
+    }
 
     if (typeof vnode.children === 'string') {
       setElementText(el, vnode.children)
@@ -56,72 +62,15 @@ function createRenderer(options) {
         patch(null, child, el)
       })
     }
-
-    if (vnode.props) {
-      for (const key in vnode.props) {
-        patchProp(el, key, null, vnode.props[key])
-      }
-    }
-
     insert(el, container)
   }
 
   function patchElement(n1, n2, container) {
     const el = n2.el = n1.el
-    const oldProps = n1.props
-    const newProps = n2.props
-
-    // 第一步: 更新props 
-    for (const key in newProps) {
-      // 更新新的 props
-      if (newProps[key] !== oldProps[key]) {
-        patchProp(el, key, oldProps[key], newProps[key])
-      }
-    }
-    for (const key in oldProps) {
-      // 删除旧的 props
-      if (!(key in newProps)) {
-        patchProp(el, key, oldProps[key], null)
-      }
-    }
-
-    // 第二步: 更新子节点
-    patchChildren(n1, n2, el)
-  }
-
-  function patchChildren(n1, n2, container) {
-    // 如果新的 children 是一个字符串 
-    if (typeof n2.children === 'string') {
-      // 如果旧节点是一组子节点 进行卸载
-      if (Array.isArray(n1.children)) {
-        n1.children.forEach(child => unmount(child))
-      }
-      setElementText(container, n2.children)
-    }
-    // 新节点是一组子节点
-    else if (Array.isArray(n2.children)) {
-
-      // 旧节点是一组子节点
-      if (Array.isArray(n1.children)) {
-        // ... 核心 dom diff
-
-        n1.children.forEach(c => unmount(c))
-        n2.children.forEach(c => patch(null, c, container))
-      } else {
-        // 旧节点是一个字符串
-        setElementText(container, '')
-        n2.children.forEach(c => patch(null, c, container))
-      }
-    }
-    // 新节点没有子节点
-    else {
-      // 旧节点有子节点 进行逐个卸载
-      if (Array.isArray(n1.children)) {
-        n1.children.forEach(child => unmount(child))
-      }
-      // 旧节点是文本 清空
-      else if (typeof n1.children === 'string') {
-        setElementText(container, '')
+    if (n2.props) {
+      for (const key in n2.props) {
+        // 打属性补丁
+        patchProp(el, key, n1.props[key], n2.props[key])
       }
     }
   }

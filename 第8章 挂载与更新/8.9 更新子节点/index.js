@@ -90,7 +90,7 @@ function createRenderer(options) {
   }
 
   function patchChildren(n1, n2, container) {
-    // 如果新的 children 是一个字符串 
+    // 新 children 是一个字符串 
     if (typeof n2.children === 'string') {
       // 如果旧节点是一组子节点 进行卸载
       if (Array.isArray(n1.children)) {
@@ -98,7 +98,7 @@ function createRenderer(options) {
       }
       setElementText(container, n2.children)
     }
-    // 新节点是一组子节点
+    // 新 children 是一组子节点
     else if (Array.isArray(n2.children)) {
 
       // 旧节点是一组子节点
@@ -113,7 +113,7 @@ function createRenderer(options) {
         n2.children.forEach(c => patch(null, c, container))
       }
     }
-    // 新节点没有子节点
+    // 新 children 没有子节点
     else {
       // 旧节点有子节点 进行逐个卸载
       if (Array.isArray(n1.children)) {
