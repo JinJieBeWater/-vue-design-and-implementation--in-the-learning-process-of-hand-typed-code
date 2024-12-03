@@ -7,7 +7,9 @@ function createRenderer(options) {
     createElement,
     setElementText,
     insert,
-    patchProp
+    patchProp,
+    createText,
+    setText
   } = options
 
 
@@ -34,13 +36,25 @@ function createRenderer(options) {
         // 打补丁
         patchElement(n1, n2, container)
       }
-
     }
     // 描述的是组件
     else if (typeof type === 'object') {
     }
-    // 描述的其他类型
-    else if (type === 'xxx') { }
+    // 描述的文本节点
+    else if (type === Text) {
+      // 如果旧的 vnode 不存在 则挂载
+      if (!n1) {
+        const el = n2.el = createText(n2.children)
+        insert(el, container)
+      }
+      // 旧的 vnode 存在 更新文本节点
+      else {
+        const el = n2.el = n1.el
+        if (n2.children !== n1.children) {
+          setText(el, n2.children)
+        }
+      }
+    }
 
   }
 
@@ -90,7 +104,7 @@ function createRenderer(options) {
   }
 
   function patchChildren(n1, n2, container) {
-    // 如果新的 children 是一个字符串 
+    // 新 children 是一个字符串 
     if (typeof n2.children === 'string') {
       // 如果旧节点是一组子节点 进行卸载
       if (Array.isArray(n1.children)) {
@@ -98,7 +112,7 @@ function createRenderer(options) {
       }
       setElementText(container, n2.children)
     }
-    // 新节点是一组子节点
+    // 新 children 是一组子节点
     else if (Array.isArray(n2.children)) {
 
       // 旧节点是一组子节点
@@ -113,7 +127,7 @@ function createRenderer(options) {
         n2.children.forEach(c => patch(null, c, container))
       }
     }
-    // 新节点没有子节点
+    // 新 children 没有子节点
     else {
       // 旧节点有子节点 进行逐个卸载
       if (Array.isArray(n1.children)) {
@@ -183,6 +197,12 @@ const optionsReallyNeeded = {
   insert(el, parent, anchor = null) {
     parent.insertBefore(el, anchor)
   },
+  createText(text) {
+    return document.createTextNode(text)
+  },
+  setText(node, text) {
+    node.nodeValue = text
+  },
   patchProp(el, key, prevValue, nextValue) {
     // vue 3 中 对于 class 进行了特殊处理 但最终到此时会序列化成一串字符串
     // 有三种方式设置class el.className = 'foo' el.setAttribute('class', 'foo') el.classList.add('foo')
@@ -237,33 +257,17 @@ const optionsReallyNeeded = {
   }
 }
 
-const renderer = createRenderer(optionsReallyNeeded)
+const Text = Symbol('Text')
+const Comment = Symbol('Comment')
 
-const { effect, ref } = VueReactivity
-const bol = ref(false)
-
-effect(() => {
-  console.log('11')
-
-  // 创建一个vnode
-  const vnode = {
-    type: 'div',
-    props: bol.value ? {
-      onClick: () => {
-        alert('父元素 clicked')
-      }
-    } : {},
-    children: [{
-      type: 'p',
-      props: {
-        onClick: () => {
-          bol.value = true
-        }
-      },
-      children: 'text'
-    }],
-  }
-
-  renderer.render(vnode, document.querySelector('#app'))
+const TextVNode = {
+  type: Text,
+  children: '我是文本'
 }
-)
+
+const CommentVNode = {
+  type: Comment,
+  children: '我是注释'
+}
+
+console.log(Text1 === Text)

@@ -6,17 +6,19 @@ function createRenderer(options) {
   const {
     createElement,
     setElementText,
+    createText,
+    setText,
     insert,
-    patchProp
+    patchProp,
   } = options
 
-
-
-  // 打补丁或者直接挂载
+  /**
+   * @param {*} n1 旧vnode
+   * @param {*} n2 新vnode
+   * @param {*} container 
+   */
   function patch(n1, n2, container) {
-    // n1 旧的 vnode
-    // n2 新的 vnode
-    // n1存在 并且vnode 所描述的内容是否相同 不相同 则卸载
+    // n1存在 并且 vnode 描述内容 不相同则卸载
     if (n1 && n1.type !== n2.type) {
       unmount(n1)
       n1 = null
@@ -34,13 +36,38 @@ function createRenderer(options) {
         // 打补丁
         patchElement(n1, n2, container)
       }
-
     }
     // 描述的是组件
     else if (typeof type === 'object') {
     }
-    // 描述的其他类型
-    else if (type === 'xxx') { }
+    // 描述的文本节点
+    else if (type === Text) {
+      // 如果旧的 vnode 不存在 则挂载
+      if (!n1) {
+        const el = n2.el = createText(n2.children)
+        insert(el, container)
+      }
+      // 旧的 vnode 存在 更新文本节点
+      else {
+        const el = n2.el = n1.el
+        if (n2.children !== n1.children) {
+          setText(el, n2.children)
+        }
+      }
+    }
+    // Fragment 节点
+    else if (type === Fragment) {
+      // 如果旧的 vnode 不存在 则挂载
+      if (!n1) {
+        // 挂载
+        n2.children.forEach(c => patch(null, c, container))
+      }
+      // 旧的 vnode 存在 更新 Fragment 节点
+      else {
+        // 更新 Fragment 节点
+        patchChildren(n1, n2, container)
+      }
+    }
 
   }
 
@@ -71,15 +98,14 @@ function createRenderer(options) {
     const oldProps = n1.props
     const newProps = n2.props
 
-    // 第一步: 更新props 
+    // 更新新的 props
     for (const key in newProps) {
-      // 更新新的 props
       if (newProps[key] !== oldProps[key]) {
         patchProp(el, key, oldProps[key], newProps[key])
       }
     }
+    // 删除旧的 props
     for (const key in oldProps) {
-      // 删除旧的 props
       if (!(key in newProps)) {
         patchProp(el, key, oldProps[key], null)
       }
@@ -90,7 +116,7 @@ function createRenderer(options) {
   }
 
   function patchChildren(n1, n2, container) {
-    // 如果新的 children 是一个字符串 
+    // 新 children 是一个字符串 
     if (typeof n2.children === 'string') {
       // 如果旧节点是一组子节点 进行卸载
       if (Array.isArray(n1.children)) {
@@ -98,22 +124,38 @@ function createRenderer(options) {
       }
       setElementText(container, n2.children)
     }
-    // 新节点是一组子节点
+    // 新 children 是一组子节点
     else if (Array.isArray(n2.children)) {
-
       // 旧节点是一组子节点
       if (Array.isArray(n1.children)) {
-        // ... 核心 dom diff
+        // ... 核心 dom diff 
+        const oldChildren = n1.children
+        const newChildren = n2.children
 
-        n1.children.forEach(c => unmount(c))
-        n2.children.forEach(c => patch(null, c, container))
+        // 遍历children
+        for (let i = 0;i < newChildren.length;i++) {
+          const newChild = newChildren[i]
+          // 查找对应的 oldChildren 元素
+          for (let j = 0;j < oldChildren.length;j++) {
+            const oldChild = oldChildren[j]
+            // 如果找到了 oldChildren 元素 则进行 patch
+            if (oldChild.key === newChild.key) {
+              patch(oldChild, newChild, container)
+              break
+            }
+          }
+        }
+
+        // TODO 当前没有考虑数量不同的去情况
+        // TODO 当前并没有移动元素 真实dom仍然维持旧的顺序 只是更新了元素的内容
+
       } else {
         // 旧节点是一个字符串
         setElementText(container, '')
         n2.children.forEach(c => patch(null, c, container))
       }
     }
-    // 新节点没有子节点
+    // 新 children 没有子节点
     else {
       // 旧节点有子节点 进行逐个卸载
       if (Array.isArray(n1.children)) {
@@ -128,6 +170,13 @@ function createRenderer(options) {
 
   // 卸载
   function unmount(vnode) {
+    // Fragment 节点本身并没有 el 元素 所以不能进行卸载 处理 children 即可
+    if (vnode.type === Fragment) {
+      vnode.children.forEach(c => unmount(c))
+      return
+    }
+
+    // 常规节点卸载
     const parent = vnode.el.parentNode
     if (parent) {
       parent.removeChild(vnode.el)
@@ -183,6 +232,12 @@ const optionsReallyNeeded = {
   insert(el, parent, anchor = null) {
     parent.insertBefore(el, anchor)
   },
+  createText(text) {
+    return document.createTextNode(text)
+  },
+  setText(node, text) {
+    node.nodeValue = text
+  },
   patchProp(el, key, prevValue, nextValue) {
     // vue 3 中 对于 class 进行了特殊处理 但最终到此时会序列化成一串字符串
     // 有三种方式设置class el.className = 'foo' el.setAttribute('class', 'foo') el.classList.add('foo')
@@ -237,33 +292,7 @@ const optionsReallyNeeded = {
   }
 }
 
-const renderer = createRenderer(optionsReallyNeeded)
+const Text = Symbol('Text')
+const Comment = Symbol('Comment')
+const Fragment = Symbol('Fragment')
 
-const { effect, ref } = VueReactivity
-const bol = ref(false)
-
-effect(() => {
-  console.log('11')
-
-  // 创建一个vnode
-  const vnode = {
-    type: 'div',
-    props: bol.value ? {
-      onClick: () => {
-        alert('父元素 clicked')
-      }
-    } : {},
-    children: [{
-      type: 'p',
-      props: {
-        onClick: () => {
-          bol.value = true
-        }
-      },
-      children: 'text'
-    }],
-  }
-
-  renderer.render(vnode, document.querySelector('#app'))
-}
-)
