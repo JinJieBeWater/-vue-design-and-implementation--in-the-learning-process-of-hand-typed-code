@@ -169,16 +169,8 @@ function createRenderer(options) {
     let newEndVNode = newChildren[newEndIdx]
 
     while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-      // 旧头部节点为undefined 则该节点已被处理过
-      if (!oldStartVNode) {
-        oldStartVNode = oldchildren[++oldStartIdx]
-      }
-      // 旧尾部节点为undefined 则该节点已被处理过
-      else if (!oldEndVNode) {
-        oldEndVNode = oldchildren[--oldEndIdx]
-      }
       // 旧头部节点与新头部节点
-      else if (oldStartVNode.key === newStartVNode.key) {
+      if (oldStartVNode.key === newStartVNode.key) {
         patch(oldStartVNode, newStartVNode, container)
         oldStartVNode = oldchildren[++oldStartIdx]
         newStartVNode = newChildren[++newStartIdx]
@@ -202,15 +194,7 @@ function createRenderer(options) {
         insert(oldEndVNode.el, container, oldStartVNode.el)
         oldEndVNode = oldchildren[--oldEndIdx]
         newStartVNode = newChildren[++newStartIdx]
-      } else {
-        const idxInOld = oldchildren.findIndex(node => node.key === newStartVNode.key)
-        if (idxInOld > 0) {
-          const vnodeTomove = oldchildren[idxInOld]
-          patch(vnodeTomove, newStartVNode, container)
-          insert(vnodeTomove.el, container, oldStartVNode.el)
-          oldchildren[idxInOld] = undefined
-          newStartVNode = newChildren[++newStartIdx]
-        }
+
       }
     }
 

@@ -1,12 +1,11 @@
-let div = document.createElement('div')
-div.innerHTML = '<div>123</div>'
-
-let invoker = function (e) {
-  invoker.value(e)
+function Animal(name) {
+  this.name = name
 }
 
-invoker.value = (e) => {
-  console.log(e)
-}
+Animal.prototype.data = { height: 100, weight: 100 }
 
-invoker()
+let animal1 = new Animal('dog')
+let animal2 = new Animal('cat')
+
+console.dir(Animal.prototype === Function.prototype.__proto__)
+console.dir(Animal.prototype.__proto__ === Object.prototype)
