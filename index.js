@@ -55,9 +55,11 @@ function createRenderer(options) {
   } = options
 
   /**
-   * @param {*} n1 旧vnode
-   * @param {*} n2 新vnode
-   * @param {*} container 
+   * 更新或挂载虚拟节点
+   * @param {Object|null} n1 - 旧的虚拟节点，首次渲染时为null
+   * @param {Object} n2 - 新的虚拟节点
+   * @param {Element} container - 容器元素
+   * @param {Element|null} anchor - 锚点元素，用于指定插入位置
    */
   function patch(n1, n2, container, anchor) {
     // n1存在 并且 vnode 描述内容 不相同则卸载
@@ -81,6 +83,11 @@ function createRenderer(options) {
     }
     // 描述的是组件
     else if (typeof type === 'object') {
+      if (!n1) {
+        mountComponent(n2, container, anchor)
+      } else {
+        patchComponent(n1, n2, anchor)
+      }
     }
     // 描述的文本节点
     else if (type === Text) {
@@ -113,6 +120,12 @@ function createRenderer(options) {
 
   }
 
+  /**
+   * 挂载元素节点
+   * @param {Object} vnode - 虚拟节点
+   * @param {Element} container - 容器元素
+   * @param {Element|null} anchor - 锚点元素，用于指定插入位置
+   */
   function mountElement(vnode, container, anchor) {
     // 创建dom
     // 在vnode上与真实dom进行关联
@@ -135,6 +148,12 @@ function createRenderer(options) {
     insert(el, container, anchor)
   }
 
+  /**
+   * 更新元素节点，包括更新props和子节点
+   * @param {Object} n1 - 旧的虚拟节点
+   * @param {Object} n2 - 新的虚拟节点
+   * @param {Element} container - 容器元素
+   */
   function patchElement(n1, n2, container) {
     const el = n2.el = n1.el
     const oldProps = n1.props
@@ -157,6 +176,12 @@ function createRenderer(options) {
     patchChildren(n1, n2, el)
   }
 
+  /**
+   * 更新新旧虚拟节点的子节点
+   * @param {Object} n1 - 旧的虚拟节点
+   * @param {Object} n2 - 新的虚拟节点  
+   * @param {Element} container - 容器元素
+   */
   function patchChildren(n1, n2, container) {
     // 新 children 是一个字符串 
     if (typeof n2.children === 'string') {
@@ -192,7 +217,21 @@ function createRenderer(options) {
     }
   }
 
-  // 双端 diff
+  /**
+   * 双端 Diff 算法实现子节点的更新
+   * 通过维护四个索引(新旧头尾)对节点进行比较，尽可能复用已有节点
+   * 算法步骤:
+   * 1. 新旧头部节点比较
+   * 2. 新旧尾部节点比较
+   * 3. 旧头部与新尾部比较
+   * 4. 旧尾部与新头部比较
+   * 5. 处理非理想情况(查找、新增、删除节点)
+   * 6. 处理剩余节点
+   * 
+   * @param {Object} n1 - 旧的虚拟节点
+   * @param {Object} n2 - 新的虚拟节点
+   * @param {Element} container - 容器元素
+   */
   function patchKeyedChildren(n1, n2, container) {
     const oldchildren = n1.children
     const newChildren = n2.children
@@ -276,7 +315,20 @@ function createRenderer(options) {
     }
   }
 
-  //快速 diff
+  /**
+   * 快速 Diff 算法实现子节点的更新
+   * 该算法通过以下步骤优化更新性能:
+   * 1. 预处理: 处理相同的前置和后置节点
+   * 2. 特殊情况处理: 处理新增或删除的节点
+   * 3. 未知序列处理:
+   *    - 构建索引表进行节点复用
+   *    - 计算最长递增子序列避免不必要的移动
+   *    - 移动、新增或删除节点
+   * 
+   * @param {Object} n1 - 旧的虚拟节点
+   * @param {Object} n2 - 新的虚拟节点
+   * @param {Element} container - 容器元素
+   */
   function patchKeyedChildren2(n1, n2, container) {
     const newChildren = n2.children
     const oldchildren = n1.children
@@ -414,11 +466,14 @@ function createRenderer(options) {
         }
       }
     }
-
-
   }
 
-  // 卸载
+  /**
+   * 卸载虚拟节点及其子节点
+   * 如果是Fragment节点则只需处理其子节点
+   * 如果是普通节点则从DOM树中移除对应的真实DOM元素
+   * @param {Object} vnode - 要卸载的虚拟节点
+   */
   function unmount(vnode) {
     // Fragment 节点本身并没有 el 元素 所以不能进行卸载 处理 children 即可
     if (vnode.type === Fragment) {
@@ -433,11 +488,19 @@ function createRenderer(options) {
     }
   }
 
+  /**
+   * 渲染虚拟节点到容器中，负责新旧节点的对比更新和卸载
+   * @param {Object|null} vnode - 要渲染的虚拟节点，如果为null则表示要卸载
+   * @param {Element} container - DOM容器元素
+   */
   function render(vnode, container) {
+    // 进行patch
     if (vnode) {
       // 新的 vnode 与旧的 vnode 进行对比
       patch(container._vnode, vnode, container)
-    } else if (container._vnode) {
+    }
+    // 卸载 清空容器
+    else if (container._vnode) {
       // 卸载 清空容器
       // container.innerHTML = ''
       // 这样做不严谨 卸载时应该调用子节点的各个生命周期函数 或者 自定义指令等钩子
@@ -545,4 +608,14 @@ const optionsReallyNeeded = {
 const Text = Symbol('Text')
 const Comment = Symbol('Comment')
 const Fragment = Symbol('Fragment')
+
+const renderer = createRenderer(optionsReallyNeeded)
+
+// 组件虚拟节点
+const CompVNode = {
+  type: MyComponent,
+}
+
+renderer.render(CompVNode, document.querySelector('#app'))
+
 
