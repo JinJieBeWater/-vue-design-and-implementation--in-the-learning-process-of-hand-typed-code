@@ -1,12 +1,5 @@
-const { effect, ref, reactive, shallowReactive } = VueReactivity
+const { effect, ref, reactive } = VueReactivity
 
-/**
- * 获取数组的最长递增子序列的索引数组
- * 使用贪心 + 二分查找算法求解
- * 时间复杂度 O(nlogn)，空间复杂度 O(n)
- * @param {Array<number>} arr - 输入数组
- * @returns {Array<number>} - 最长递增子序列中元素在原数组中的索引
- */
 function getSequence(arr) {
   const p = arr.slice()
   const result = [0]
@@ -47,28 +40,6 @@ function getSequence(arr) {
 
   }
   return result
-}
-
-/**
- * 解析组件的props和attrs属性
- * 将组件定义的props选项与传入的props数据进行匹配
- * 匹配的属性存入props对象，未匹配的存入attrs对象
- * @param {Object} options - 组件定义的props选项
- * @param {Object} propsData - 传递给组件的props数据
- * @returns {Array} - 返回包含props和attrs的数组 [props, attrs]
- */
-function resolveProps(options, propsData) {
-  const props = {}
-  const attrs = {}
-  for (const key in propsData) {
-    if (key in options) {
-      props[key] = propsData[key]
-    } else {
-      attrs[key] = propsData[key]
-    }
-  }
-
-  return [props, attrs]
 }
 
 function createRenderer(options) {
@@ -517,23 +488,9 @@ function createRenderer(options) {
     }
   }
 
-  /**
- * 挂载组件
- * 负责组件的初始化、生命周期钩子调用和状态管理
- * 包括:
- * 1. 创建组件实例并初始化状态
- * 2. 处理props和attrs
- * 3. 调用生命周期钩子(beforeCreate/created/beforeMount/mounted等)
- * 4. 设置响应式更新机制
- * 
- * @param {Object} vnode - 组件的虚拟节点
- * @param {Element} container - 组件将被挂载的DOM容器
- * @param {Element|null} anchor - 插入位置的锚点元素
- */
   function mountComponent(vnode, container, anchor) {
     const componentOptions = vnode.type
-
-    const { render, data, props: propsOption, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated } = componentOptions
+    const { render, data, beforeCreate, created, beforeMount, mounted, beforeUpdate, updated } = componentOptions
 
     // beforeCreate 钩子
     beforeCreate && beforeCreate()
@@ -541,12 +498,9 @@ function createRenderer(options) {
     // 使数据响应式
     const state = reactive(data())
 
-    const [props, attrs] = resolveProps(propsOption, vnode.props)
-
     // 定义组件实例
     const instance = {
       state,
-      props: shallowReactive(props),
       isMounted: false,
       subTree: null,
     }
@@ -554,35 +508,8 @@ function createRenderer(options) {
     // 组件实例挂载到vnode上 方便后续使用
     vnode.component = instance
 
-    // 渲染上下文
-    const renderContext = new Proxy(instance, {
-      get(t, k, r) {
-        const { state, props } = t
-        // state 存在 则返回 state 中的值
-        if (state && k in state) {
-          return state[k]
-        }
-        // props 存在 则返回 props 中的值
-        else if (k in props) {
-          return props[k]
-        } else {
-          console.error('不存在')
-        }
-      },
-      set(t, k, v, r) {
-        const { state, props } = t
-        if (state && k in state) {
-          state[k] = v
-        } else if (k in props) {
-          console.warn(`Attempting to mutate prop ${k}. Props are readonly.`)
-        } else {
-          console.error('不存在')
-        }
-      },
-    })
-
     // created 钩子
-    created && created().call(renderContext)
+    created && created()
 
     // 组件自更新
     effect(() => {
@@ -610,49 +537,6 @@ function createRenderer(options) {
     }, {
       scheduler: queueJob
     })
-  }
-
-  /**
- * 比较新旧props是否发生变化
- * 通过比较props的数量和值来判断是否需要更新组件
- * @param {Object} prevProps - 旧的props对象
- * @param {Object} nextProps - 新的props对象
- * @returns {boolean} - 如果props发生变化返回true，否则返回false
- */
-  function hasPropsChanged(prevProps, nextProps) {
-    const nextKeys = Object.keys(nextProps)
-
-    if (nextKeys.length !== Object.keys(prevProps).length) {
-      return true
-    }
-
-    for (let i = 0;i < nextKeys.length;i++) {
-      const key = nextKeys[i]
-      if (nextProps[key] !== prevProps[key]) return true
-    }
-
-    return false
-  }
-
-  function patchComponent(n1, n2, anchor) {
-    const instance = (n2.component = n1.component)
-
-    const { props } = instance
-
-    // 判断组件是否需要更新
-    if (hasPropsChanged(n1.props, n2.props)) {
-      // 需要更新
-      // 重新解析新的虚拟dom的 props
-      const [nextProps] = resolveProps(n2.type.props, n2.props)
-      // 新增与修改 props
-      for (const k in nextProps) {
-        props[k] = nextProps[k]
-      }
-      // 删除不存在的 props
-      for (const k in props) {
-        if (!(k in nextProps)) delete props[k]
-      }
-    }
   }
 
   /**
