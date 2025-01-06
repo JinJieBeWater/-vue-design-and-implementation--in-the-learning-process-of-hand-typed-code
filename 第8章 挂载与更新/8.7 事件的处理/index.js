@@ -127,12 +127,13 @@ const optionsReallyNeeded = {
 
     // 事件
     if (/^on/.test(key)) {
-      // 事件
-      let invoker = e.l._evi
+      // 通过 invoker 来实现事件缓存
+      let invoker = el._evi
       const name = key.slice(2).toLowerCase()
+      // nextValue 则说明添加或更新事件
       if (nextValue) {
+        // 如果没有 invoker 创建一个伪造的 invoker 缓存到 e.l._evi
         if (!invoker) {
-          // 如果没有 invoker 创建一个伪造的 invoker 缓存到 e.l._evi
           invoker = el._evi = (e) => {
             invoker.value(e)
           }
@@ -140,26 +141,32 @@ const optionsReallyNeeded = {
           invoker.value = nextValue
           el.addEventListener(name, invoker)
         }
-      } else {
+        // 更新事件
+        else {
+          invoker.value = nextValue
+        }
+      }
+      // 如果 nextValue 不存在 则说明删除事件
+      else if (invoker) {
         el.removeEventListener(name, invoker)
       }
+    }
+    // 由这里可见得 vnode的属性与真实dom的元素属性的数据结构不总是一致
+    else if (key === 'class') {
+      el.className = nextValue || ''
     } else
-      // 由这里可见得 vnode的属性与真实dom的元素属性的数据结构不总是一致
-      if (key === 'class') {
-        el.className = nextValue || ''
-      } else
-        if (shouldSetAsProps(el, key, nextValue)) {
-          // 判断属性的类型
-          const type = typeof el[key]
-          // 如果是布尔值 并且值为空字符串 则将其设置为true
-          if (type === 'boolean' && nextValue === '') {
-            el[key] = true
-          } else {
-            el[key] = value
-          }
+      if (shouldSetAsProps(el, key, nextValue)) {
+        // 判断属性的类型
+        const type = typeof el[key]
+        // 如果是布尔值 并且值为空字符串 则将其设置为true
+        if (type === 'boolean' && nextValue === '') {
+          el[key] = true
         } else {
-          el.setAttribute(key, nextValue)
+          el[key] = value
         }
+      } else {
+        el.setAttribute(key, nextValue)
+      }
   }
 }
 
