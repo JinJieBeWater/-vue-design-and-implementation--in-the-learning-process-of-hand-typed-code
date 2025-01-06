@@ -560,6 +560,9 @@ function createRenderer(options) {
 
     // 存储 setup 返回的数据
     let setupState = null
+    // 区分 setup 两种返回值
+    // 1. 返回函数 则将函数赋值给 render 选项
+    // 2. 返回对象 则将对象赋值给 setupState
     if (typeof setupResult === 'function') {
       if (render) console.error('setup 函数返回渲染函数，render 选项将被忽略')
       render = setupResult
