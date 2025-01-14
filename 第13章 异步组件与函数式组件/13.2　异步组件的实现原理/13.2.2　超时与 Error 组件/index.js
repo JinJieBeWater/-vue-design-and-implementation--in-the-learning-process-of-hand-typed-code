@@ -515,12 +515,9 @@ function createRenderer(options) {
     if (vnode.type === Fragment) {
       vnode.children.forEach(c => unmount(c))
       return
-    } else if (typeof vnode.type === 'object') {
-      // 对于组件的卸载，本质上是要卸载组件所渲染的内容，即 subTree
-      unmount(vnode.component.subTree)
-      return
     }
 
+    // 常规节点卸载
     const parent = vnode.el.parentNode
     if (parent) {
       parent.removeChild(vnode.el)

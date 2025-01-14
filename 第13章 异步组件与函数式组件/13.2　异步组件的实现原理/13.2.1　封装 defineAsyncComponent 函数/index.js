@@ -515,12 +515,9 @@ function createRenderer(options) {
     if (vnode.type === Fragment) {
       vnode.children.forEach(c => unmount(c))
       return
-    } else if (typeof vnode.type === 'object') {
-      // 对于组件的卸载，本质上是要卸载组件所渲染的内容，即 subTree
-      unmount(vnode.component.subTree)
-      return
     }
 
+    // 常规节点卸载
     const parent = vnode.el.parentNode
     if (parent) {
       parent.removeChild(vnode.el)
@@ -829,55 +826,25 @@ const optionsReallyNeeded = {
   }
 }
 
-function defineAsyncComponent(options) {
-  if (typeof options === 'function') {
-    options = {
-      loader: options
-    }
-  }
-
-  const { loader } = options
-
+function defineAsyncComponent(loader) {
+  // 一个变量，用来存储异步加载的组件
   let InnerComp = null
-
+  // 返回一个包装组件
   return {
     name: 'AsyncComponentWrapper',
     setup() {
+      // 异步组件是否加载成功
       const loaded = ref(false)
-      // 定义 error，当错误发生时，用来存储错误对象
-      const error = shallowRef(null)
-
-      let timer = null
-
-      loader()
-        .then(c => {
-          InnerComp = c
-          loaded.value = true
-          // 取消定时器
-          clearTimeout(timer)
-        })
-        // 添加 catch 语句来捕获加载过程中的错误
-        .catch((err) => error.value = err)
-
-      if (options.timeout) {
-        timer = setTimeout(() => {
-          // 超时后创建一个错误对象，并复制给 error.value
-          const err = new Error(`Async component timed out after ${options.timeout}ms.`)
-          error.value = err
-        }, options.timeout)
-      }
-
-      const placeholder = { type: Text, children: '' }
+      // 执行加载器函数，返回一个 Promise 实例
+      // 加载成功后，将加载成功的组件赋值给 InnerComp，并将 loaded 标记为 true，代表加载成功
+      loader().then(c => {
+        InnerComp = c
+        loaded.value = true
+      })
 
       return () => {
-        if (loaded.value) {
-          return { type: InnerComp }
-        } else if (error.value && options.errorComponent) {
-          // 只有当错误存在且用户配置了 errorComponent 时才展示 Error 组件，同时将 error 作为 props 传递
-          return { type: options.errorComponent, props: { error: error.value } }
-        } else {
-          return placeholder
-        }
+        // 如果异步组件加载成功，则渲染该组件，否则渲染一个占位内容
+        return loaded.value ? { type: InnerComp } : { type: Text, children: '' }
       }
     }
   }
